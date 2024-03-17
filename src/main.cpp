@@ -48,7 +48,7 @@ int dataPins[] = {PD0, PD1, PD2, PD3, PD4, PD5, PD6, PD7};
 //volatile int direction = DIR_IN;
 volatile int processing = 0;
 
-// enum state_t {IDLE_S, DIR_S, RFNAME_S, WFNAME_S, RFILE_S, WFILE_S, RFILE_E1_S, WFILE_E1_S};
+// enum state_t {IDLE_S, DIR_S, RFNAME_S, WFNAME_S, DFNAME_S, RFILE_S, WFILE_S, RFILE_E1_S, WFILE_E1_S, DIR_E1_S, DFILE_E1_S};
 #define IDLE_S 0
 #define RFNAME_S 3
 //#define RFARG2_S 12
@@ -68,6 +68,8 @@ volatile int processing = 0;
 
 #define DFNAME_S 32
 
+#define DIR_E1_S 17
+#define DFILE_E1_S 33
 
 volatile int state;
 
@@ -203,6 +205,9 @@ void cpuReadStatusReq() {
   }
   //Serial.println(" RS");
 
+  //Serial.println(state);
+
+
   writeDataBus(state);
 
   // let cpu go
@@ -247,8 +252,18 @@ void cpuReadDataReq() {
 
     case DIR_S:
       if(dir_idx < dir_max) { 
-        writeDataBus(dir_lst[dir_idx++]);
+        writeDataBus(dir_lst[dir_idx++]); 
+        if(dir_idx >= dir_max) {
+          // end of dir list
+          // reset file list
+          dir_lst[0] = '\0';
+          dir_idx = 0;
+          dir_max = 0;
+          state = IDLE_S;         
+        }
       } else {
+        // we never come here
+        //Serial.println("EDIR");
         // reset file list
         dir_lst[0] = '\0';
         dir_idx = 0;
@@ -314,8 +329,13 @@ void cpuWriteCmdReq() {
           dir_max = 0;
 
           root = SD.open("/");
-          printDirectory(root, 0);
-          state = DIR_S;
+          if(root) {
+            printDirectory(root, 0);
+            state = DIR_S;           
+          } else {
+            state = DIR_E1_S;
+          }
+
         break;
 
         case 0xD: // 13
@@ -463,8 +483,10 @@ void cpuWriteDataReq() {
         // check if file exists
         if (SD.exists(filename)) {
           SD.remove(filename);
+          state = IDLE_S;
+        } else {
+          state = DFILE_E1_S;
         }
-        state = IDLE_S;
       }
       Serial.println(filename);
     break;
@@ -611,11 +633,13 @@ void setupSDcard() {
   Serial.println("initialization done.");
 }
 
+/*
 void SDCardListFiles() {
   root = SD.open("/");
   printDirectory(root, 0);
   //Serial.println("done!");
 }
+*/
 
 void printDirectory(File dir, int numTabs) {
 
@@ -629,7 +653,7 @@ void printDirectory(File dir, int numTabs) {
     for (uint8_t i = 0; i < numTabs; i++) {
       dir_lst[dir_max++] = '\t';
       //dir_max++;
-      Serial.print('\t');
+      //Serial.print('\t');
     }
 
     char *name = entry.name();
@@ -638,12 +662,12 @@ void printDirectory(File dir, int numTabs) {
       name++;
     }
 
-    Serial.print(entry.name());
+    //Serial.print(entry.name());
 
 
     if (entry.isDirectory()) {
       dir_lst[dir_max++] = '/';
-      Serial.println("/");
+      //Serial.println("/");
       //printDirectory(entry, numTabs + 1);
     } else {
       // files have sizes, directories do not
@@ -653,10 +677,11 @@ void printDirectory(File dir, int numTabs) {
 
       //Serial.print("\t\t");
       //Serial.println(entry.size(), DEC);
-      Serial.println("");
+      //Serial.println("");
     }
 
     dir_lst[dir_max++] ='\n';
+    dir_lst[dir_max++] ='\r';
 
     entry.close();
   }
