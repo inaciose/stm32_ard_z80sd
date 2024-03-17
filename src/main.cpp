@@ -74,6 +74,11 @@ volatile int state;
 char filename[64] = {0};
 volatile int filename_count = 0;
 
+// file list process
+volatile char dir_lst[2048];
+volatile int dir_idx = 0;
+volatile int dir_max = 0;
+
 // pin level operations
 void setupPin();
 void dPinModeInput();
@@ -165,7 +170,9 @@ void setup() {
   setupSDcard();
 
   //SDCardListFiles();
-
+  // file list process
+  dir_lst[0] = '\0';
+  
   state = IDLE_S;
 }
 
@@ -238,6 +245,18 @@ void cpuReadDataReq() {
       writeDataBus(buf[0]);
     break;
 
+    case DIR_S:
+      if(dir_idx < dir_max) { 
+        writeDataBus(dir_lst[dir_idx++]);
+      } else {
+        // reset file list
+        dir_lst[0] = '\0';
+        dir_idx = 0;
+        dir_max = 0;
+        state = IDLE_S;
+      }
+    break;
+
     default:
       // nothing to do
       // just let cpu go
@@ -279,11 +298,23 @@ void cpuWriteCmdReq() {
           state = IDLE_S;
           filename[0] = '\0';
           filename_count = 0;
+          // reset file list
+          dir_lst[0] = '\0';
+          dir_idx = 0;
+          dir_max = 0;
         break;
 
         case 0xE: // 14
           // list files
           Serial.println("WC cmd list files");
+          
+          // file list process
+          dir_lst[0] = '\0';
+          dir_idx = 0;
+          dir_max = 0;
+
+          root = SD.open("/");
+          printDirectory(root, 0);
           state = DIR_S;
         break;
 
@@ -336,8 +367,6 @@ void cpuWriteCmdReq() {
       }
     break;
 
-    break;
-
     default:
       switch(dataread) {
         case 0xF: // 15
@@ -349,6 +378,10 @@ void cpuWriteCmdReq() {
           if(myfile) {
             myfile.close();
           }
+          // reset file list
+          dir_lst[0] = '\0';
+          dir_idx = 0;
+          dir_max = 0;
         break;
       }
     break;
@@ -585,6 +618,7 @@ void SDCardListFiles() {
 }
 
 void printDirectory(File dir, int numTabs) {
+
   while (true) {
 
     File entry =  dir.openNextFile();
@@ -593,18 +627,38 @@ void printDirectory(File dir, int numTabs) {
       break;
     }
     for (uint8_t i = 0; i < numTabs; i++) {
+      dir_lst[dir_max++] = '\t';
+      //dir_max++;
       Serial.print('\t');
     }
+
+    char *name = entry.name();
+    while(*name != '\0') {    
+      dir_lst[dir_max++] = *name;
+      name++;
+    }
+
     Serial.print(entry.name());
+
+
     if (entry.isDirectory()) {
+      dir_lst[dir_max++] = '/';
       Serial.println("/");
-      printDirectory(entry, numTabs + 1);
+      //printDirectory(entry, numTabs + 1);
     } else {
       // files have sizes, directories do not
-      Serial.print("\t\t");
-      Serial.println(entry.size(), DEC);
+
+      //dir_lst[dir_max++] = '\t';
+      //dir_lst[dir_max++] = '\t';
+
+      //Serial.print("\t\t");
+      //Serial.println(entry.size(), DEC);
+      Serial.println("");
     }
+
+    dir_lst[dir_max++] ='\n';
+
     entry.close();
   }
+  dir_lst[dir_max++] = '\0';
 }
-
