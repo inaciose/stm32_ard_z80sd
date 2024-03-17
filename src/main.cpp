@@ -101,7 +101,7 @@ void cpuEndRequest();
 // sd card
 void printDirectory(File dir, int numTabs);
 void setupSDcard();
-void SDCardListFiles();
+//void SDCardListFiles();
 
 File root;
 File myfile;
@@ -171,8 +171,7 @@ void setup() {
 
   setupSDcard();
 
-  //SDCardListFiles();
-  // file list process
+  // directory list buffer init
   dir_lst[0] = '\0';
   
   state = IDLE_S;
@@ -193,10 +192,10 @@ void loop() {
 
 
 void cpuReadStatusReq() {
+  /*
   if(processing) {
     Serial.println("RS on P1");
   }
-  processing = 1;
 
   if(!digitalRead(RDS_N)) {
     Serial.println("RS");
@@ -204,9 +203,10 @@ void cpuReadStatusReq() {
     Serial.println("-RS");
   }
   //Serial.println(" RS");
-
   //Serial.println(state);
+  */
 
+  processing = 1;
 
   writeDataBus(state);
 
@@ -218,11 +218,11 @@ void cpuReadStatusReq() {
 
 }
 
-void cpuReadDataReq() { 
+void cpuReadDataReq() {
+  /*
   if(processing) {
     Serial.println("RD on P1");
   }
-  processing = 1;
 
   if(!digitalRead(RDD_N)) {
     Serial.println("RD");
@@ -230,6 +230,9 @@ void cpuReadDataReq() {
     Serial.println("-RD");
   }
   //Serial.println(" RD");
+  */
+
+  processing = 1;
 
   char buf[8] = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
 
@@ -239,13 +242,13 @@ void cpuReadDataReq() {
 
       if(!myfile.available()) {
         // file end
-        Serial.println("RD file end");
+        //Serial.println("RD file end");
         state = IDLE_S;
         myfile.close();
       }
 
       // dbg
-      Serial.println(buf);
+      //Serial.println(buf);
 
       writeDataBus(buf[0]);
     break;
@@ -288,11 +291,10 @@ void cpuReadDataReq() {
 }
 
 void cpuWriteCmdReq() {
+  /*
   if(processing) {
     Serial.println("WC on P1");
   }
-  processing = 1;
-
 
   if(!digitalRead(WRC_N)) {
     Serial.println("WC");
@@ -300,16 +302,19 @@ void cpuWriteCmdReq() {
     Serial.println("-WC");
   }
   //Serial.println("WC ");
+  */
+
+  processing = 1;
 
   int dataread = readFromDataBus();
-  Serial.println(dataread, HEX);
+  //Serial.println(dataread, HEX);
 
   switch(state) {
     case IDLE_S:
       switch(dataread) {
         case 0xF: // 15
           // reset
-          Serial.println("WC cmd reset");
+          //Serial.println("WC cmd reset");
           state = IDLE_S;
           filename[0] = '\0';
           filename_count = 0;
@@ -321,7 +326,7 @@ void cpuWriteCmdReq() {
 
         case 0xE: // 14
           // list files
-          Serial.println("WC cmd list files");
+          //Serial.println("WC cmd list files");
           
           // file list process
           dir_lst[0] = '\0';
@@ -340,7 +345,7 @@ void cpuWriteCmdReq() {
 
         case 0xD: // 13
           // start load file request
-          Serial.println("WC cmd start load file request");
+          //Serial.println("WC cmd start load file request");
           filename[0] = '\0';
           filename_count = 0;
           state = RFNAME_S;
@@ -348,7 +353,7 @@ void cpuWriteCmdReq() {
 
         case 0xC: // 12
           // start write file request (open file)
-          Serial.println("WC cmd start save file request");
+          //Serial.println("WC cmd start save file request");
           filename[0] = '\0';
           filename_count = 0;
           state = WFNAME_S;
@@ -356,7 +361,7 @@ void cpuWriteCmdReq() {
 
         case 0xA: // 10
           // delete file request
-          Serial.println("WC cmd delete file request");
+          //Serial.println("WC cmd delete file request");
           filename[0] = '\0';
           filename_count = 0;
           state = DFNAME_S;
@@ -368,7 +373,7 @@ void cpuWriteCmdReq() {
       switch(dataread) {
         case 0xB: // 11
           // end write file request (close file)
-          Serial.println("WC cmd end save file request");          
+          //Serial.println("WC cmd end save file request");          
           myfile.close();          
           filename[0] = '\0';
           filename_count = 0;
@@ -377,7 +382,7 @@ void cpuWriteCmdReq() {
 
         case 0xF: // 15
           // reset
-          Serial.println("WC cmd reset (wfile)");
+          //Serial.println("WC cmd reset (wfile)");
           myfile.close();
           filename[0] = '\0';
           filename_count = 0;
@@ -391,7 +396,7 @@ void cpuWriteCmdReq() {
       switch(dataread) {
         case 0xF: // 15
           // reset
-          Serial.println("WC cmd reset (gbl)");
+          //Serial.println("WC cmd reset (gbl)");
           state = IDLE_S;
           filename[0] = '\0';
           filename_count = 0;
@@ -409,16 +414,15 @@ void cpuWriteCmdReq() {
 
   // let cpu go
   digitalWrite(WAIT_N, HIGH); 
-  //state = IDLE_S;
+
   processing = 0;
 }
 
 void cpuWriteDataReq() {
+  /*
   if(processing) {
     Serial.println("WD on P1");
   }
-  processing = 1;
-
 
   if(!digitalRead(WRD_N)) {
     Serial.println("WD");
@@ -426,6 +430,9 @@ void cpuWriteDataReq() {
     Serial.println("-WD");
   }
   //Serial.println("WD ");
+  */
+
+  processing = 1;
 
   int dataread = readFromDataBus();
   //Serial.println(dataread, HEX);
@@ -434,7 +441,7 @@ void cpuWriteDataReq() {
 
   switch(state) {
     case RFNAME_S:
-      Serial.println("WD RFNAME_S");
+      //Serial.println("WD RFNAME_S");
       if(dataread) {
         filename[filename_count] = dataread;
         filename[filename_count + 1 ] = '\0';
@@ -443,18 +450,18 @@ void cpuWriteDataReq() {
         // open file, inform if error, and change state
         myfile = SD.open(filename);
         if (myfile) {
-          Serial.println("RFILE_S start");
+          //Serial.println("RFILE_S start");
           state = RFILE_S;
         } else {
-          Serial.println("RFILE_E1_S");
+          //Serial.println("RFILE_E1_S");
           state = RFILE_E1_S;
         }
       }
-      Serial.println(filename);
+      //Serial.println(filename);
     break;
 
     case WFNAME_S:
-      Serial.println("WD WFNAME_S");
+      //Serial.println("WD WFNAME_S");
       if(dataread) {
         filename[filename_count] = dataread;
         filename[filename_count + 1 ] = '\0';
@@ -463,18 +470,18 @@ void cpuWriteDataReq() {
         // open file, inform if error, and change state
         myfile = SD.open(filename, FILE_WRITE);
         if (myfile) {
-          Serial.println("WFILE_S start");
+          //Serial.println("WFILE_S start");
           state = WFILE_S;
         } else {
-          Serial.println("WFILE_E1_S");
+          //Serial.println("WFILE_E1_S");
           state = WFILE_E1_S;
         }
       }
-      Serial.println(filename);
+      //Serial.println(filename);
     break;
 
     case DFNAME_S:
-      Serial.println("WD DFNAME_S");
+      //Serial.println("WD DFNAME_S");
       if(dataread) {
         filename[filename_count] = dataread;
         filename[filename_count + 1 ] = '\0';
@@ -488,11 +495,11 @@ void cpuWriteDataReq() {
           state = DFILE_E1_S;
         }
       }
-      Serial.println(filename);
+      //Serial.println(filename);
     break;
 
     case WFILE_S:
-      Serial.println("WD WFILE_S");
+      //Serial.println("WD WFILE_S");
       Serial.println(dataread);
       buf[0] = dataread;
       myfile.write(buf, 1);
@@ -505,7 +512,6 @@ void cpuWriteDataReq() {
 
   // let cpu go
   digitalWrite(WAIT_N, HIGH);
-  //state = IDLE_S;
   processing = 0;
 
 }
@@ -513,9 +519,11 @@ void cpuWriteDataReq() {
 void cpuEndRequest() {
   // run on all relevant 138 outputs go high
   // the cpu go way running
+  /*
   if(processing) {
     Serial.println("E on P1");
   }
+  */
   processing = 1;
   //Serial.println("E  ");
   // prepare next WAIT_L response
